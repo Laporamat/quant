@@ -18,6 +18,7 @@ from stats.correlation import CorrelationAnalysis
 from stats.regime_detection import RegimeDetection
 from stats.seasonality import SeasonalityAnalysis
 from stats.distribution import DistributionAnalysis
+from stats.bubble_detection import BubbleDetection
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -177,3 +178,92 @@ async def distribution_analysis(
         "best_fit":  DistributionAnalysis.fit_best_distribution(rets),
         "t_fit":     DistributionAnalysis.fit_t_distribution(rets),
     }
+
+
+@router.get("/bubble/{ticker}")
+async def bubble_analysis(
+    ticker:     str,
+    start_date: Optional[str] = Query(None),
+    end_date:   Optional[str] = Query(None),
+    loader:     DataLoader    = Depends(get_loader),
+):
+    """
+    Detect speculative bubbles using:
+    - Log-price acceleration (super-exponential growth)
+    - Rolling cumulative return z-score
+    - LPPL-inspired growth test
+    - Volatility regime spike
+    Returns composite bubble score (0-100), individual signals,
+    historical crash episodes found in the price series, and
+    time-series data for charting.
+    """
+    df = loader.load(ticker.upper(), start=start_date, end=end_date)
+    if df.empty:
+        raise HTTPException(404, f"No data for {ticker}")
+
+    prices = df["close"]
+    try:
+        result = BubbleDetection.analyse(prices, ticker=ticker)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Bubble analysis failed: {e}")
+
+    return {
+        "ticker":              result.ticker,
+        "start_date":          result.start_date,
+        "end_date":            result.end_date,
+        "bubble_score":        result.bubble_score,
+        "is_bubble":           result.is_bubble,
+        "pe_ratio_current":    result.pe_ratio_current,
+        "pe_ratio_hist_avg":   result.pe_ratio_hist_avg,
+        "pe_zscore":           result.pe_zscore,
+        "price_acceleration":  result.price_acceleration,
+        "log_return_zscore":   result.log_return_zscore,
+        "crash_probability":   result.crash_probability,
+        "historical_bubbles":  [
+            {
+                "peak_date":    b.peak_date,
+                "trough_date":  b.trough_date,
+                "peak_price":   b.peak_price,
+                "trough_price": b.trough_price,
+                "drawdown":     b.drawdown,
+                "duration_days":b.duration_days,
+                "name":         b.name,
+            }
+            for b in result.historical_bubbles
+        ],
+        "price_series":  result.price_series,
+        "zscore_series": result.zscore_series,
+        "signals":       [
+            {
+                "name":        s.name,
+                "triggered":   s.triggered,
+                "value":       s.value,
+                "threshold":   s.threshold,
+                "description": s.description,
+            }
+            for s in result.signals
+        ],
+    }
+
+
+@router.post("/bubble/scan")
+async def bubble_scan(
+    tickers:    list[str],
+    start_date: Optional[str] = Query(None),
+    end_date:   Optional[str] = Query(None),
+    loader:     DataLoader    = Depends(get_loader),
+):
+    """Scan a list of tickers and rank them by bubble score."""
+    import pandas as pd
+    panel_dict = {}
+    for t in tickers[:50]:  # cap at 50
+        df = loader.load(t.upper(), start=start_date, end=end_date)
+        if not df.empty:
+            panel_dict[t.upper()] = df["close"]
+    if not panel_dict:
+        raise HTTPException(404, "No data found for any requested ticker")
+    panel = pd.DataFrame(panel_dict)
+    summary = BubbleDetection.scan_universe(panel)
+    return summary.to_dict("records")

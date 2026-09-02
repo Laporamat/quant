@@ -9,8 +9,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from config import settings
+from config import settings, BASE_DIR
 from api.middleware import register_middleware
 from api.routers.data_router import router as data_router
 from api.routers.stats_router import router as stats_router
@@ -64,6 +65,12 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["health"])
     async def health():
         return JSONResponse({"status": "healthy"})
+
+    # ── Optional: serve built frontend at /ui ─────────────────────────────
+    _frontend_dist = BASE_DIR / "frontend" / "dist"
+    if _frontend_dist.exists():
+        app.mount("/ui", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
+        logger.info("Frontend dist found — serving at /ui")
 
     return app
 

@@ -113,3 +113,57 @@ async def sector_breakdown(
         return SectorBreakdownResponse(universe=name, sectors=sectors)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# ── Quick-start background download ──────────────────────────────────────────
+
+_QUICKSTART_TICKERS = [
+    # Benchmarks
+    "SPY", "QQQ", "IWM", "GLD", "TLT", "VTI",
+    # Sector ETFs
+    "XLK", "XLV", "XLF", "XLE", "XLY", "XLP", "XLI", "XLB", "XLU", "XLRE", "XLC",
+    # Top 20 SP100
+    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "JPM", "V", "JNJ",
+    "PG", "HD", "XOM", "CVX", "MRK", "ABBV", "KO", "PEP", "AVGO", "COST",
+]
+
+_download_status: dict = {"running": False, "done": 0, "total": 0, "errors": []}
+
+
+def _run_quickstart(dl: DataDownloader) -> None:
+    global _download_status
+    _download_status["running"] = True
+    _download_status["total"]   = len(_QUICKSTART_TICKERS)
+    _download_status["done"]    = 0
+    _download_status["errors"]  = []
+    try:
+        result = dl.download(_QUICKSTART_TICKERS)
+        _download_status["done"] = len(result)
+        missing = [t for t in _QUICKSTART_TICKERS if t not in result]
+        _download_status["errors"] = missing
+    finally:
+        _download_status["running"] = False
+
+
+@router.post("/quickstart", tags=["data"])
+async def quickstart_download(
+    background_tasks: BackgroundTasks,
+    dl: DataDownloader = Depends(get_downloader),
+):
+    """Trigger a background download of benchmarks + sector ETFs + top 20 SP100."""
+    if _download_status["running"]:
+        return {"status": "already_running", **_download_status}
+    background_tasks.add_task(_run_quickstart, dl)
+    return {"status": "started", "tickers": len(_QUICKSTART_TICKERS)}
+
+
+@router.get("/quickstart/status", tags=["data"])
+async def quickstart_status():
+    """Poll the status of a running quickstart download."""
+    return {
+        "running": _download_status["running"],
+        "done":    _download_status["done"],
+        "total":   _download_status["total"],
+        "errors":  _download_status["errors"],
+        "pct":     round(_download_status["done"] / max(_download_status["total"], 1) * 100),
+    }
