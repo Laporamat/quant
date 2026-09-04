@@ -90,9 +90,12 @@
                 <span class="badge badge-blue text-xs">#{{ i + 1 }}</span>
                 <p class="text-xs text-surface-400 mt-1">{{ form.metric }}: <span class="text-surface-100 font-bold">{{ (r[form.metric] as number)?.toFixed(4) }}</span></p>
                 <div class="space-y-0.5">
-                  <p v-for="(v, k) in r" :key="String(k)" v-if="!['rank', form.metric].includes(String(k))" class="text-xs text-surface-400">
-                    {{ k }}: <span class="text-surface-200">{{ v }}</span>
-                  </p>
+                  <!-- Fix: v-for and v-if cannot be on same element in Vue 3 — use template wrapper -->
+                  <template v-for="(v, k) in r" :key="String(k)">
+                    <p v-if="!['rank', form.metric].includes(String(k))" class="text-xs text-surface-400">
+                      {{ k }}: <span class="text-surface-200">{{ v }}</span>
+                    </p>
+                  </template>
                 </div>
                 <button @click="applyToBacktest(r)" class="btn-ghost text-xs w-full px-2 py-1 mt-1 border border-surface-700">Apply →</button>
               </div>
@@ -268,8 +271,8 @@ async function runWalkForward() {
       maximize:   true,
     }, wfTrainYears.value, wfTestYears.value)
 
-    wfResults.value = res.data as Record<string, unknown>[]
-    const folds = wfResults.value.map((_, i) => `Fold ${i + 1}`)
+    wfResults.value = (res.data as Record<string, unknown>[])
+    const folds  = wfResults.value.map((_, i) => `Fold ${i + 1}`)
     const metric = form.value.metric
     wfOption.value = {
       tooltip: { ...BASE_TOOLTIP },
@@ -277,8 +280,15 @@ async function runWalkForward() {
       xAxis:   { ...BASE_XAXIS, data: folds },
       yAxis:   { ...BASE_YAXIS },
       series: [{
-        type: 'bar', data: wfResults.value.map((r) => (r[metric] as number ?? 0).toFixed(4)),
-        itemStyle: { color: (p: { value: number }) => p.value >= 0 ? '#22c55e' : '#ef4444', borderRadius: [4, 4, 0, 0] },
+        type: 'bar',
+        data: wfResults.value.map((r) => {
+          const v = r[metric] ?? r['oos_sharpe'] ?? 0
+          return +(Number(v)).toFixed(4)
+        }),
+        itemStyle: {
+          color: (p: { value: number }) => p.value >= 0 ? '#22c55e' : '#ef4444',
+          borderRadius: [4, 4, 0, 0],
+        },
         barMaxWidth: 40,
       }],
     }

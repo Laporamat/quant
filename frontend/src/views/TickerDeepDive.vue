@@ -187,10 +187,18 @@ async function loadPrice() {
     ])
     if (maRes.status === 'fulfilled') maData = maRes.value.data as Record<string, number[]>
     if (bbRes.status === 'fulfilled') {
-      const bd = bbRes.value.data as { upper?: number[]; lower?: number[] }[]
+      // API returns array of records: [{date, upper, middle, lower}, ...]
+      // OR object with arrays: {upper: [...], lower: [...]}
+      const bd = bbRes.value.data
       if (Array.isArray(bd)) {
-        bbData.upper = bd.map((r) => r.upper ?? 0)
-        bbData.lower = bd.map((r) => r.lower ?? 0)
+        // records format
+        bbData.upper = (bd as Record<string, number>[]).map((r) => r.upper ?? 0)
+        bbData.lower = (bd as Record<string, number>[]).map((r) => r.lower ?? 0)
+      } else {
+        // object-of-arrays format
+        const obj = bd as Record<string, number[]>
+        bbData.upper = obj.upper ?? []
+        bbData.lower = obj.lower ?? []
       }
     }
     buildCandleOption()

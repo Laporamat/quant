@@ -133,7 +133,6 @@ import ChartCard     from '@/components/shared/ChartCard.vue'
 import DataTable     from '@/components/shared/DataTable.vue'
 import { statsApi }  from '@/api/statsApi'
 import { dataApi }   from '@/api/dataApi'
-import { indicatorsApi } from '@/api/indicatorsApi'
 import { http }          from '@/api/client'
 import { useMarketStore } from '@/stores/marketStore'
 import {
@@ -301,25 +300,36 @@ async function loadBreadth() {
   breadthLoading.value = true
   try {
     const tickers = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','JPM','V','PG',
-                     'HD','CVX','MRK','ABBV','PEP','KO','AVGO','COST','TMO','WMT'].slice(0, 20)
+                     'HD','CVX','MRK','ABBV','PEP','KO','AVGO','COST','TMO','WMT']
     const end   = dayjs().format('YYYY-MM-DD')
     const start = dayjs().subtract(1, 'year').format('YYYY-MM-DD')
+
+    // Fetch close prices for each ticker, then compute SMA locally
     const results = await Promise.allSettled(
-      tickers.map((t) => indicatorsApi.ma(t, '50,200', 'sma', start, end))
+      tickers.map((t) => dataApi.prices(t, start, end))
     )
+
     let above50 = 0, above200 = 0, counted = 0
+
     results.forEach((r) => {
       if (r.status !== 'fulfilled') return
-      const d = r.value.data as Record<string, number[]>
-      const price = d['close'] ?? d['sma_50'] ?? []
-      const s50   = d['sma_50']  ?? []
-      const s200  = d['sma_200'] ?? []
-      if (!price.length) return
+      const closes = r.value.data.data.map((b) => b.close)
+      if (closes.length < 50) return
       counted++
-      const last = price.length - 1
-      if (s50.length  && price[last] > s50[last])  above50++
-      if (s200.length && price[last] > s200[last]) above200++
+
+      const lastClose = closes.at(-1)!
+
+      // SMA 50: mean of last 50 closes
+      const sma50 = closes.slice(-50).reduce((a, b) => a + b, 0) / 50
+      if (lastClose > sma50) above50++
+
+      // SMA 200: only if we have enough data
+      if (closes.length >= 200) {
+        const sma200 = closes.slice(-200).reduce((a, b) => a + b, 0) / 200
+        if (lastClose > sma200) above200++
+      }
     })
+
     const p50  = counted ? Math.round((above50  / counted) * 100) : 50
     const p200 = counted ? Math.round((above200 / counted) * 100) : 50
     const col50  = p50  > 60 ? '#22c55e' : p50  < 40 ? '#ef4444' : '#f59e0b'
