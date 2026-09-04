@@ -88,9 +88,4 @@ async def walk_forward(
     except Exception as e:
         raise HTTPException(500, f"Walk-forward failed: {e}")
 
-    return {
-        "strategy":   req.strategy,
-        "folds":      df.to_dict("records"),
-        "n_folds":    len(df),
-        "avg_oos_sharpe": float(df["oos_sharpe"].mean()) if "oos_sharpe" in df else None,
-    }
+    return df.to_dict("records")

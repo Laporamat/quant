@@ -180,9 +180,11 @@ const REGIME_LABELS = ['Bull', 'Bear', 'Sideways', 'Volatile']
 
 const regimeCols = [
   { key: 'label',      label: 'Regime' },
-  { key: 'pct_time',   label: '% Time',   align: 'right' as const, format: (v: unknown) => `${((v as number)*100).toFixed(1)}%` },
-  { key: 'avg_return', label: 'Avg Ret',  align: 'right' as const, colorize: true, format: (v: unknown) => `${((v as number)*100).toFixed(3)}%` },
-  { key: 'volatility', label: 'Vol',      align: 'right' as const, format: (v: unknown) => `${((v as number)*100).toFixed(2)}%` },
+  // pct_time is fraction 0-1 from backend — format as percentage
+  { key: 'pct_time',   label: '% Time',   align: 'right' as const, format: (v: unknown) => `${((v as number) * 100).toFixed(1)}%` },
+  // avg_return is annualised — already in decimal form
+  { key: 'avg_return', label: 'Avg Ret',  align: 'right' as const, colorize: true, format: (v: unknown) => `${((v as number) * 100).toFixed(2)}%` },
+  { key: 'volatility', label: 'Vol',      align: 'right' as const, format: (v: unknown) => `${((v as number) * 100).toFixed(2)}%` },
 ]
 
 async function loadRegime() {
@@ -215,19 +217,19 @@ async function loadRegime() {
       })),
     }
 
-    // Stats table
+    // Stats table — backend already renamed pct_days→pct_time and mean_return→avg_return
     regimeStats.value = d.stats.map((s) => ({
       ...s,
       label: REGIME_LABELS[s.regime as number] ?? `State ${s.regime}`,
     }))
 
-    // Interpretation text
+    // Interpretation text — pct_time is now 0-1 fraction
     if (d.stats.length) {
       const bull = d.stats.find((s) => s.regime === 0)
       const bear = d.stats.find((s) => s.regime === 1)
       const pBull = bull ? ((bull.pct_time as number) * 100).toFixed(1) : '?'
       const pBear = bear ? ((bear.pct_time as number) * 100).toFixed(1) : '?'
-      regimeInterpretation.value = `${ticker.value} was in Bull regime ${pBull}% and Bear regime ${pBear}% of the time over the selected period. ${bull && (bull.avg_return as number) > 0 ? 'Positive average returns in bull state confirm upward trend bias.' : ''}`
+      regimeInterpretation.value = `${ticker.value} was in Bull regime ${pBull}% and Bear regime ${pBear}% of the time over the selected period.${bull && (bull.avg_return as number) > 0 ? ' Positive average returns in bull state confirm upward trend bias.' : ''}`
     }
   } finally {
     regimeLoading.value = false
@@ -262,18 +264,24 @@ async function loadSeasonality() {
     const res = await statsApi.seasonality(ticker.value, dateRange.value.start, dateRange.value.end)
     const d = res.data
 
-    const DOW_LABELS = ['Mon','Tue','Wed','Thu','Fri']
+    const DOW_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     dowOption.value = makeEffectBar(
-      d.day_of_week.map((r) => DOW_LABELS[Number(r.label)] ?? r.label),
-      d.day_of_week.map((r) => r.mean_return),
-      d.day_of_week.map((r) => r.std),
+      d.day_of_week.map((r) => {
+        const n = r.day_num ?? r.label
+        return DOW_LABELS[Number(n)] ?? String(n)
+      }),
+      d.day_of_week.map((r) => r.mean_return as number),
+      d.day_of_week.map((r) => r.std as number),
     )
 
     const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
     monthOption.value = makeEffectBar(
-      d.month.map((r) => MONTH_LABELS[Number(r.label) - 1] ?? r.label),
-      d.month.map((r) => r.mean_return),
-      d.month.map((r) => r.std),
+      d.month.map((r) => {
+        const n = r.month_num ?? r.label
+        return MONTH_LABELS[Number(n) - 1] ?? String(n)
+      }),
+      d.month.map((r) => r.mean_return as number),
+      d.month.map((r) => r.std as number),
     )
 
     januaryEffect.value = d.january_effect as typeof januaryEffect.value
@@ -303,31 +311,52 @@ async function loadDistribution() {
     const tr = d.tail_risk
 
     varRows.value = [
-      { method: 'Historical',  var95: tr.var_95_hist  ?? tr.var_95,  var99: tr.var_99_hist  ?? tr.var_99 },
-      { method: 'Parametric',  var95: tr.var_95_param ?? tr.var_95,  var99: tr.var_99_param ?? tr.var_99 },
-      { method: 'Cornish-Fisher', var95: tr.var_95_cf ?? tr.var_95, var99: tr.var_99_cf ?? tr.var_99 },
+      {
+        method: 'Historical',
+        var95: tr['var_hist_95']  ?? tr['var_95_hist']  ?? tr['var_95'],
+        var99: tr['var_hist_99']  ?? tr['var_99_hist']  ?? tr['var_99'],
+      },
+      {
+        method: 'Parametric',
+        var95: tr['var_param_95'] ?? tr['var_95_param'] ?? tr['var_95'],
+        var99: tr['var_param_99'] ?? tr['var_99_param'] ?? tr['var_99'],
+      },
+      {
+        method: 'Cornish-Fisher',
+        var95: tr['var_cf_95']    ?? tr['var_95_cf']    ?? tr['var_95'],
+        var99: tr['var_cf_99']    ?? tr['var_99_cf']    ?? tr['var_99'],
+      },
     ]
 
-    bestFit.value = d.best_fit as typeof bestFit.value
+    // best_fit is nested inside tail_risk dict (from DistributionAnalysis.tail_risk_report)
+    const bf = tr['best_fit'] ?? d.best_fit
+    bestFit.value = bf as typeof bestFit.value
 
-    // Empirical tail quantile chart
-    const quantiles = [0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.10,0.15,0.20]
-    const qValues   = quantiles.map((q) => {
-      const key = `var_${Math.round(q*100)}`
-      return tr[key] ?? null
-    })
+    // Empirical tail quantile chart — keys are var_hist_90, var_hist_95, var_hist_99
+    const quantiles = [90, 95, 99]
+    const qValues = quantiles.map((q) =>
+      tr[`var_hist_${q}`] ?? tr[`var_${q}`] ?? null
+    )
+    // Add CVaR points too for a richer curve
+    const allPoints = [
+      { label: 'VaR 90%', val: tr['var_hist_90']  ?? tr['var_hist_90']  ?? null },
+      { label: 'VaR 95%', val: tr['var_hist_95']  ?? null },
+      { label: 'VaR 99%', val: tr['var_hist_99']  ?? null },
+      { label: 'CVaR 90%',val: tr['cvar_hist_90'] ?? null },
+      { label: 'CVaR 95%',val: tr['cvar_hist_95'] ?? null },
+      { label: 'CVaR 99%',val: tr['cvar_hist_99'] ?? null },
+    ].filter((p) => p.val !== null)
     tailOption.value = {
       tooltip:  { ...BASE_TOOLTIP },
       grid:     { ...BASE_GRID },
-      xAxis:    { ...BASE_XAXIS, data: quantiles.map((q) => `${(q*100).toFixed(0)}%`), name: 'Loss Quantile' },
-      yAxis:    { ...BASE_YAXIS, axisLabel: { ...BASE_YAXIS.axisLabel, formatter: (v: number) => `${(v*100).toFixed(2)}%` } },
+      xAxis:    { ...BASE_XAXIS, data: allPoints.map((p) => p.label) },
+      yAxis:    { ...BASE_YAXIS, axisLabel: { ...BASE_YAXIS.axisLabel, formatter: (v: number) => `${(v * 100).toFixed(2)}%` } },
       series: [{
-        name: 'VaR', type: 'line',
-        data: qValues.map((v) => v !== null ? +(v).toFixed(6) : null),
-        symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: '#ef4444', width: 2 },
-        itemStyle: { color: '#ef4444' },
-        areaStyle: { color: 'rgba(239,68,68,0.1)' },
+        name: 'Loss', type: 'bar', barMaxWidth: 40,
+        data: allPoints.map((p) => +(p.val as number).toFixed(6)),
+        itemStyle: { color: '#ef4444', borderRadius: [4, 4, 0, 0] },
+        label: { show: true, position: 'top', color: '#f1f5f9', fontSize: 10,
+          formatter: (p: { value: number }) => `${(p.value * 100).toFixed(2)}%` },
       }],
     }
   } finally {

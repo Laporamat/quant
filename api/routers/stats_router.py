@@ -138,11 +138,17 @@ async def regime_detection(
         regime_df = pd.DataFrame({"regime": RegimeDetection.ma_regime(
             loader.load(ticker.upper())["close"]
         )})
-    stats = RegimeDetection.regime_stats(rets, regime_df.get("regime", regime_df.iloc[:, 0]))
+    raw_stats = RegimeDetection.regime_stats(rets, regime_df.get("regime", regime_df.iloc[:, 0]))
+    # Rename pct_days → pct_time and convert to fraction (was already * 100)
+    if "pct_days" in raw_stats.columns:
+        raw_stats = raw_stats.rename(columns={"pct_days": "pct_time"})
+        raw_stats["pct_time"] = raw_stats["pct_time"] / 100.0  # store as fraction 0-1
+    if "mean_return" in raw_stats.columns:
+        raw_stats = raw_stats.rename(columns={"mean_return": "avg_return"})
     return RegimeResponse(
         ticker=ticker.upper(),
         regimes=regime_df.tail(252).reset_index().rename(columns={"date": "date"}).to_dict("records"),
-        stats=stats.to_dict("records"),
+        stats=raw_stats.to_dict("records"),
     )
 
 

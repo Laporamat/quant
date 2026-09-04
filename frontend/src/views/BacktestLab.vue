@@ -300,22 +300,32 @@ async function loadDetailAndHistory(runId: string) {
 }
 
 async function loadHistoricResult(runId: string) {
-  const res = await backtestApi.get(runId)
-  // Rebuild minimal result shape
-  const eq = result.value?.equity_curve ?? {}
-  result.value = {
-    run_id:          runId,
-    strategy:        res.data.strategy,
-    start_date:      dateRange.value.start,
-    end_date:        dateRange.value.end,
-    initial_capital: form.value.initial_capital,
-    performance:     res.data.performance,
-    equity_curve:    eq,
-    n_trades:        res.data.trade_log?.length ?? 0,
-    run_time_s:      0,
+  running.value = true
+  result.value  = null
+  try {
+    const res = await backtestApi.get(runId)
+    const d   = res.data
+    // Reconstruct full BacktestResponse shape — equity_curve now included from backend fix
+    result.value = {
+      run_id:          runId,
+      strategy:        d.strategy,
+      start_date:      d.created?.substring(0, 10) ?? dateRange.value.start,
+      end_date:        dateRange.value.end,
+      initial_capital: form.value.initial_capital,
+      performance:     d.performance,
+      equity_curve:    (d.equity_curve ?? {}) as Record<string, number>,
+      n_trades:        (d.trade_log as unknown[])?.length ?? 0,
+      run_time_s:      0,
+    }
+    tradeLog.value  = (d.trade_log ?? []) as Record<string, unknown>[]
+    reportUrl.value = backtestApi.reportUrl(runId)
+    // Rebuild all charts from the retrieved equity_curve
+    if (Object.keys(result.value.equity_curve).length > 0) {
+      buildCharts(result.value)
+    }
+  } finally {
+    running.value = false
   }
-  tradeLog.value  = res.data.trade_log as Record<string, unknown>[]
-  reportUrl.value = backtestApi.reportUrl(runId)
 }
 
 function buildCharts(data: BacktestResponse) {

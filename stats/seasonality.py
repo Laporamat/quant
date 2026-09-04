@@ -106,16 +106,18 @@ class SeasonalityAnalysis:
     # January Effect
     # ──────────────────────────────────────────
     @staticmethod
-    def january_effect(returns: pd.Series) -> Dict[str, float]:
+    def january_effect(returns: pd.Series) -> Dict:
         """Test if January returns differ from other months."""
         jan  = returns[returns.index.month == 1]
         rest = returns[returns.index.month != 1]
         ttest = scipy_stats.ttest_ind(jan.dropna(), rest.dropna())
+        detected = bool(float(ttest.pvalue) < 0.05 and float(jan.mean()) > float(rest.mean()))
         return {
-            "jan_mean":  float(jan.mean()),
-            "rest_mean": float(rest.mean()),
-            "t_stat":    float(ttest.statistic),
+            "detected":  detected,
             "p_value":   float(ttest.pvalue),
+            "avg_jan":   float(jan.mean()),
+            "avg_other": float(rest.mean()),
+            "t_stat":    float(ttest.statistic),
             "effect":    float(jan.mean() - rest.mean()),
         }
 
@@ -123,16 +125,18 @@ class SeasonalityAnalysis:
     # Monday Effect
     # ──────────────────────────────────────────
     @staticmethod
-    def monday_effect(returns: pd.Series) -> Dict[str, float]:
+    def monday_effect(returns: pd.Series) -> Dict:
         """Test if Monday returns differ from other weekdays."""
         mon  = returns[returns.index.dayofweek == 0]
         rest = returns[returns.index.dayofweek != 0]
         ttest = scipy_stats.ttest_ind(mon.dropna(), rest.dropna())
+        detected = bool(float(ttest.pvalue) < 0.05 and float(mon.mean()) < float(rest.mean()))
         return {
-            "mon_mean":  float(mon.mean()),
-            "rest_mean": float(rest.mean()),
-            "t_stat":    float(ttest.statistic),
+            "detected":  detected,
             "p_value":   float(ttest.pvalue),
+            "avg_mon":   float(mon.mean()),
+            "avg_other": float(rest.mean()),
+            "t_stat":    float(ttest.statistic),
         }
 
     # ──────────────────────────────────────────

@@ -113,12 +113,16 @@ async def get_backtest(run_id: str):
     if not entry:
         raise HTTPException(404, f"Backtest {run_id} not found")
     result = entry["result"]
+    # Sample equity curve (last 1000 bars) — same as /run response
+    eq = result.equity_curve.tail(1000)
+    eq_dict = {str(k.date()): round(v, 2) for k, v in eq.items()}
     return {
-        "run_id":      run_id,
-        "strategy":    result.strategy_name,
-        "performance": result.performance,
-        "trade_log":   result.trade_log.tail(100).to_dict("records"),
-        "created":     entry["created"],
+        "run_id":       run_id,
+        "strategy":     result.strategy_name,
+        "performance":  result.performance,
+        "equity_curve": eq_dict,
+        "trade_log":    result.trade_log.tail(100).to_dict("records"),
+        "created":      entry["created"],
     }
 
 
