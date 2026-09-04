@@ -105,8 +105,8 @@ export interface RegimePoint {
 export interface RegimeStat {
   regime:     number
   label:      string
-  pct_time:   number
-  avg_return: number
+  pct_time:   number   // fraction 0-1 (backend sends pct_days/100)
+  avg_return: number   // annualised (was mean_return in backend, renamed)
   volatility: number
   count:      number
 }
@@ -118,10 +118,16 @@ export interface RegimeResponse {
 }
 
 export interface SeasonalityEffect {
-  label:      string
+  // day_of_week rows: day_num (0=Mon), day_name, mean_return, std, count
+  // month rows: month_num (1=Jan), month_name, mean_return, std, count
+  day_num?:    number
+  month_num?:  number
+  day_name?:   string
+  month_name?: string
+  label?:      string  // fallback key
   mean_return: number
-  std:        number
-  count:      number
+  std:         number
+  count:       number
 }
 
 export interface SeasonalityResponse {
@@ -187,11 +193,12 @@ export interface TradeLogEntry {
 }
 
 export interface BacktestDetail {
-  run_id:      string
-  strategy:    string
-  performance: Record<string, number>
-  trade_log:   TradeLogEntry[]
-  created:     string
+  run_id:       string
+  strategy:     string
+  performance:  Record<string, number>
+  equity_curve: Record<string, number>  // date → equity value (added in backend fix #4)
+  trade_log:    TradeLogEntry[]
+  created:      string
 }
 
 // ─── Optimize types ───────────────────────────────────────────────────────────

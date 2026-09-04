@@ -34,7 +34,7 @@
         <!-- Score meter -->
         <div class="glass p-5 flex flex-col items-center justify-center gap-2 lg:col-span-1">
           <h3 class="text-xs font-semibold text-surface-400 uppercase tracking-wider">Bubble Score</h3>
-          <VChart :option="scoreGaugeOption!" autoresize style="height:180px;width:180px" />
+          <VChart v-if="scoreGaugeOption" :option="scoreGaugeOption" autoresize style="height:180px;width:180px" />
           <span class="badge text-sm px-4 py-1.5"
             :class="result.is_bubble ? 'bg-bear/15 text-bear border border-bear/30' : 'bg-bull/15 text-bull border border-bull/30'">
             {{ result.is_bubble ? '🔴 BUBBLE DETECTED' : '🟢 No Bubble' }}
@@ -270,10 +270,10 @@ function buildCharts(d: BubbleResponse) {
       grid: { ...BASE_GRID },
       xAxis: { ...BASE_XAXIS, data: bubbles.map((b) => b.peak_date.substring(0, 7)),
         axisLabel: { color: '#64748b', rotate: 30, fontSize: 10 } },
-      yAxis: { ...BASE_YAXIS, axisLabel: { ...BASE_YAXIS.axisLabel, formatter: (v: number) => `${(v*100).toFixed(0)}%` } },
+      yAxis: { ...BASE_YAXIS, axisLabel: { ...BASE_YAXIS.axisLabel, formatter: (v: number) => `${v.toFixed(0)}%` } },
       series: [{
-        type: 'bar', data: bubbles.map((b) => -(b.drawdown)), barMaxWidth: 40,
-        itemStyle: { color: '#ef4444', borderRadius: [0, 0, 4, 4], opacity: 0.85 },
+        type: 'bar', data: bubbles.map((b) => +(b.drawdown * 100).toFixed(1)), barMaxWidth: 40,
+        itemStyle: { color: '#ef4444', borderRadius: [4, 4, 0, 0], opacity: 0.85 },
         label: { show: true, position: 'top', color: '#f1f5f9', fontSize: 9,
           formatter: (p: { dataIndex: number }) => bubbles[p.dataIndex].name.split(' ').slice(-1)[0] },
       }],

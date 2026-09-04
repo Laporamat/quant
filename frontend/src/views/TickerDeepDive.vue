@@ -120,7 +120,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import SectionHeader  from '@/components/shared/SectionHeader.vue'
 import MetricCard     from '@/components/shared/MetricCard.vue'
 import ChartCard      from '@/components/shared/ChartCard.vue'
 import TickerSearch   from '@/components/shared/TickerSearch.vue'
