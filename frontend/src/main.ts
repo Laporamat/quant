@@ -2,7 +2,6 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
 // ── ECharts — register SYNCHRONOUSLY before app mounts ───────────────────────
-// Lazy loading caused VChart to be unresolved during first render → blank pages
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import {
@@ -28,6 +27,7 @@ use([
 import App    from './App.vue'
 import router from './router'
 import { useThemeStore } from './stores/appStore'
+import { http } from './api/client'
 import './styles/main.css'
 
 const app   = createApp(App)
@@ -35,10 +35,18 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
-app.component('VChart', VueECharts)  // global — available in every view
+app.component('VChart', VueECharts)
 
-// Apply saved theme before first render
+// ── Theme ──────────────────────────────────────────────────────────────────────
 const themeStore = useThemeStore()
 themeStore.init()
+
+// ── Auth: re-inject token from localStorage on hard refresh ───────────────────
+// client.ts already does this on import, but doing it here ensures
+// pinia is initialised before authStore reads it.
+const stored = localStorage.getItem('qd_access')
+if (stored) {
+  http.defaults.headers.common['Authorization'] = `Bearer ${stored}`
+}
 
 app.mount('#app')

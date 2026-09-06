@@ -65,7 +65,7 @@ COOKIE_OPTS    = dict(httponly=True, samesite="lax", secure=False, path="/api/au
 class RegisterRequest(BaseModel):
     email:        EmailStr
     username:     str      = Field(..., min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_\-]+$")
-    password:     str      = Field(..., min_length=8)
+    password:     str      = Field(..., min_length=1)   # strength checked in handler
     display_name: Optional[str] = Field(None, max_length=64)
 
     @field_validator("username")
