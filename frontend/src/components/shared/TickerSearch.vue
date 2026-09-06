@@ -74,15 +74,21 @@ const inputRef    = ref<HTMLInputElement>()
 
 const selected = computed(() => props.modelValue)
 
-const allTickers = computed(
-  () => marketStore.universeTickerMap[props.universe] ?? []
-)
+// Combine: available on disk + universe list, deduplicated, sorted
+const allTickers = computed(() => {
+  const fromDisk    = marketStore.availableTickers.map((t) => t.ticker)
+  const fromUniverse = marketStore.universeTickerMap[props.universe] ?? []
+  const combined    = [...new Set([...fromDisk, ...fromUniverse])].sort()
+  return combined
+})
 
 const filtered = computed(() => {
-  const q = query.value.toUpperCase()
-  return allTickers.value
-    .filter((t) => t.includes(q) && !selected.value.includes(t))
-    .slice(0, 20)
+  const q = query.value.toUpperCase().trim()
+  const source = allTickers.value
+  // Prioritise starts-with matches, then includes
+  const startsWith = source.filter((t) => t.startsWith(q) && !selected.value.includes(t))
+  const includes   = source.filter((t) => !t.startsWith(q) && t.includes(q) && !selected.value.includes(t))
+  return [...startsWith, ...includes].slice(0, 30)
 })
 
 function select(ticker: string) {
@@ -116,7 +122,9 @@ function onClickOutside(e: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('mousedown', onClickOutside)
+  // Load both universe list and available tickers from disk
   marketStore.loadUniverse(props.universe)
+  if (!marketStore.availableTickers.length) marketStore.loadAvailable()
 })
 onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 </script>

@@ -161,7 +161,11 @@
 
           <!-- Trade log -->
           <ChartCard title="Trade Log" subtitle="Last 100 trades">
-            <DataTable :columns="tradeCols" :rows="tradeLog" :page-size="15" :searchable="true" />
+            <DataTable :columns="tradeCols" :rows="tradeLog" :page-size="15" :searchable="true">
+              <template #cell-ticker="{ value }">
+                <TickerBadge :ticker="String(value)" />
+              </template>
+            </DataTable>
           </ChartCard>
 
           <!-- Actions -->
@@ -187,6 +191,7 @@ import DateRangePicker from '@/components/shared/DateRangePicker.vue'
 import { backtestApi } from '@/api/backtestApi'
 import { strategyApi } from '@/api/strategyApi'
 import { dataApi }     from '@/api/dataApi'
+import TickerBadge     from '@/components/shared/TickerBadge.vue'
 import type { BacktestResponse, BacktestListItem, DateRange } from '@/types'
 import { CHART_COLORS, BASE_TOOLTIP, BASE_LEGEND, BASE_GRID, BASE_XAXIS, BASE_YAXIS, BASE_DATAZONE, rebase } from '@/components/charts/chartTheme'
 import { STRATEGY_LABELS } from '@/types'

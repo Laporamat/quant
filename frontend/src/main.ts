@@ -1,6 +1,30 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
+// ── ECharts — register SYNCHRONOUSLY before app mounts ───────────────────────
+// Lazy loading caused VChart to be unresolved during first render → blank pages
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import {
+  LineChart, BarChart, CandlestickChart, HeatmapChart,
+  ScatterChart, GaugeChart, RadarChart,
+} from 'echarts/charts'
+import {
+  TitleComponent, TooltipComponent, GridComponent,
+  LegendComponent, DataZoomComponent, MarkLineComponent,
+  VisualMapComponent, AxisPointerComponent,
+} from 'echarts/components'
+import VueECharts from 'vue-echarts'
+
+use([
+  CanvasRenderer,
+  LineChart, BarChart, CandlestickChart, HeatmapChart,
+  ScatterChart, GaugeChart, RadarChart,
+  TitleComponent, TooltipComponent, GridComponent,
+  LegendComponent, DataZoomComponent, MarkLineComponent,
+  VisualMapComponent, AxisPointerComponent,
+])
+
 import App    from './App.vue'
 import router from './router'
 import { useThemeStore } from './stores/appStore'
@@ -11,51 +35,10 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
+app.component('VChart', VueECharts)  // global — available in every view
 
-// Apply saved theme immediately (before any render)
+// Apply saved theme before first render
 const themeStore = useThemeStore()
 themeStore.init()
 
 app.mount('#app')
-
-// ── Lazy-register VChart + ECharts AFTER first paint ─────────────────────────
-// ECharts is ~500 KB — defer it so the shell renders instantly.
-// VChart is registered globally once the idle callback fires.
-const registerECharts = async () => {
-  const [
-    { default: VueECharts },
-    { use },
-    { CanvasRenderer },
-    { LineChart, BarChart, CandlestickChart, HeatmapChart, ScatterChart, GaugeChart, RadarChart },
-    {
-      TitleComponent, TooltipComponent, GridComponent,
-      LegendComponent, DataZoomComponent, MarkLineComponent,
-      VisualMapComponent, AxisPointerComponent,
-    },
-  ] = await Promise.all([
-    import('vue-echarts'),
-    import('echarts/core'),
-    import('echarts/renderers'),
-    import('echarts/charts'),
-    import('echarts/components'),
-  ])
-
-  use([
-    CanvasRenderer,
-    LineChart, BarChart, CandlestickChart, HeatmapChart,
-    ScatterChart, GaugeChart, RadarChart,
-    TitleComponent, TooltipComponent, GridComponent,
-    LegendComponent, DataZoomComponent, MarkLineComponent,
-    VisualMapComponent, AxisPointerComponent,
-  ])
-
-  // Register globally so every chart view can use <VChart />
-  app.component('VChart', VueECharts)
-}
-
-if ('requestIdleCallback' in window) {
-  requestIdleCallback(registerECharts, { timeout: 2000 })
-} else {
-  // Safari fallback
-  setTimeout(registerECharts, 200)
-}

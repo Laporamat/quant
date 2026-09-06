@@ -23,7 +23,11 @@
         </button>
       </div>
       <div v-if="scanResults.length" class="overflow-x-auto">
-        <DataTable :columns="scanCols" :rows="scanResults" :page-size="10" />
+        <DataTable :columns="scanCols" :rows="scanResults" :page-size="10">
+          <template #cell-ticker="{ value }">
+            <TickerBadge :ticker="String(value)" />
+          </template>
+        </DataTable>
       </div>
     </div>
 
@@ -117,6 +121,7 @@ import TickerSearch    from '@/components/shared/TickerSearch.vue'
 import DateRangePicker from '@/components/shared/DateRangePicker.vue'
 import { bubbleApi } from '@/api/bubbleApi'
 import { http }      from '@/api/client'
+import TickerBadge   from '@/components/shared/TickerBadge.vue'
 import type { BubbleResponse, DateRange } from '@/types'
 import { BASE_TOOLTIP, BASE_GRID, BASE_XAXIS, BASE_YAXIS, BASE_DATAZONE } from '@/components/charts/chartTheme'
 

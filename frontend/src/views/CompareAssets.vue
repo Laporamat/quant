@@ -49,7 +49,11 @@
 
       <!-- Comparison table -->
       <ChartCard title="Comparison Metrics" :loading="loading">
-        <DataTable :columns="tableCols" :rows="tableRows" :searchable="false" />
+        <DataTable :columns="tableCols" :rows="tableRows" :searchable="false">
+          <template #cell-ticker="{ value }">
+            <TickerBadge :ticker="String(value)" />
+          </template>
+        </DataTable>
       </ChartCard>
     </template>
 
@@ -70,6 +74,7 @@ import ChartCard       from '@/components/shared/ChartCard.vue'
 import DataTable       from '@/components/shared/DataTable.vue'
 import TickerSearch    from '@/components/shared/TickerSearch.vue'
 import DateRangePicker from '@/components/shared/DateRangePicker.vue'
+import TickerBadge     from '@/components/shared/TickerBadge.vue'
 import { dataApi }  from '@/api/dataApi'
 import { statsApi } from '@/api/statsApi'
 import type { DateRange } from '@/types'

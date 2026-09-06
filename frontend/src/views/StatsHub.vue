@@ -2,9 +2,16 @@
   <div class="space-y-5 animate-fade-in">
     <SectionHeader title="Statistical Analysis Hub" description="Regime detection · Seasonality · Tail risk · Rolling statistics">
       <div class="flex items-center gap-2">
-        <div class="w-36">
-          <TickerSearch :model-value="[ticker]" @update:model-value="v => ticker = v[0] ?? 'SPY'" :multi="false" />
+        <div class="w-40">
+          <TickerSearch :model-value="[ticker]" @update:model-value="v => { ticker = v[0] ?? 'SPY' }" :multi="false" />
         </div>
+        <!-- Quick nav to Ticker Deep Dive -->
+        <RouterLink :to="`/ticker/${ticker}`" class="btn-ghost text-xs px-2 py-1.5 border border-surface-700/50 flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          </svg>
+          Deep Dive
+        </RouterLink>
         <DateRangePicker v-model="dateRange" />
       </div>
     </SectionHeader>

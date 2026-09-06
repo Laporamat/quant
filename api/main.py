@@ -19,6 +19,9 @@ from api.routers.indicators_router import router as indicators_router
 from api.routers.strategy_router import router as strategy_router
 from api.routers.backtest_router import router as backtest_router
 from api.routers.optimize_router import router as optimize_router
+from api.routers.daytrade_router import router as daytrade_router
+from api.routers.trade_signal_router import router as trade_signal_router
+from api.routers.ai_router import router as ai_router
 
 logger = logging.getLogger("api")
 
@@ -56,6 +59,9 @@ def create_app() -> FastAPI:
     app.include_router(strategy_router)
     app.include_router(backtest_router)
     app.include_router(optimize_router)
+    app.include_router(daytrade_router)
+    app.include_router(trade_signal_router)
+    app.include_router(ai_router)
 
     # ── Health / root ─────────────────────────
     @app.get("/", tags=["health"])

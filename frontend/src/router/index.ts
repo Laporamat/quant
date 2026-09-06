@@ -12,10 +12,27 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Market Dashboard', icon: 'grid' },
   },
   {
+    path: '/ai',
+    name: 'TradingAI',
+    component: () => import('@/views/TradingAIView.vue'),
+    meta: { title: 'QuantAI — Trading Assistant', icon: 'ai' },
+  },
+  {
+    path: '/trade',
+    name: 'TradeSignal',
+    component: () => import('@/views/TradeSignalView.vue'),
+    meta: { title: 'Statistical Edge Trading', icon: 'bolt' },
+  },
+  {
     path: '/ticker/:symbol',
     name: 'TickerDeepDive',
     component: () => import('@/views/TickerDeepDive.vue'),
     meta: { title: 'Ticker Analysis', icon: 'chart-line' },
+  },
+  {
+    // /ticker without symbol → redirect to SPY
+    path: '/ticker',
+    redirect: '/ticker/SPY',
   },
   {
     path: '/compare',

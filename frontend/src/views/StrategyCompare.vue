@@ -45,7 +45,11 @@
           <VChart v-if="radarOption" :option="radarOption" autoresize style="height:300px" />
         </ChartCard>
         <ChartCard title="Comparison Table" :loading="loading">
-          <DataTable :columns="tableCols" :rows="tableRows" />
+          <DataTable :columns="tableCols" :rows="tableRows">
+            <template #cell-strategy="{ value, row }">
+              <span class="text-surface-200">{{ value }}</span>
+            </template>
+          </DataTable>
         </ChartCard>
       </div>
     </template>

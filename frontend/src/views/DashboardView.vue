@@ -68,17 +68,26 @@
     <div>
       <h3 class="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Benchmark Performance</h3>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <MetricCard
+        <RouterLink
           v-for="(bm, i) in benchmarks" :key="bm.ticker"
-          :title="bm.ticker"
-          :value="bm.cagr"
-          format="percent"
-          :delta="bm.cagr !== null ? bm.cagr * 100 : undefined"
-          delta-label="CAGR"
-          :subtitle="bm.total !== null ? `Total: ${(bm.total * 100).toFixed(0)}%` : 'Loading…'"
-          :colorize="true"
-          :delay="i * 60"
-        />
+          :to="`/ticker/${bm.ticker}`"
+          class="metric-card hover:border-primary-600/40 border border-transparent cursor-pointer"
+          :style="{ animationDelay: `${i * 60}ms` }"
+        >
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-primary-400">{{ bm.ticker }}</span>
+            <svg class="w-3 h-3 text-surface-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+          </div>
+          <div class="text-2xl font-bold tabular-nums mt-1"
+            :class="bm.cagr !== null ? (bm.cagr >= 0 ? 'text-bull' : 'text-bear') : 'text-surface-500'">
+            {{ bm.cagr !== null ? `${(bm.cagr * 100).toFixed(1)}%` : '—' }}
+          </div>
+          <div class="text-xs text-surface-500 mt-0.5">
+            {{ bm.total !== null ? `Total: ${(bm.total * 100).toFixed(0)}%` : 'Loading…' }}
+          </div>
+        </RouterLink>
       </div>
     </div>
 
@@ -86,12 +95,20 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <!-- Top Gainers -->
       <ChartCard title="Top Gainers" subtitle="Best 1-year return in universe" :loading="moversLoading" :empty="!gainers.length" :hide-refresh="false" @refresh="loadMovers">
-        <DataTable :columns="moverCols" :rows="gainers" :page-size="8" />
+        <DataTable :columns="moverCols" :rows="gainers" :page-size="8">
+          <template #cell-ticker="{ value }">
+            <TickerBadge :ticker="String(value)" />
+          </template>
+        </DataTable>
       </ChartCard>
 
       <!-- Top Losers -->
       <ChartCard title="Top Losers" subtitle="Worst 1-year return in universe" :loading="moversLoading" :empty="!losers.length" @refresh="loadMovers">
-        <DataTable :columns="moverCols" :rows="losers" :page-size="8" />
+        <DataTable :columns="moverCols" :rows="losers" :page-size="8">
+          <template #cell-ticker="{ value }">
+            <TickerBadge :ticker="String(value)" />
+          </template>
+        </DataTable>
       </ChartCard>
 
       <!-- Sector Performance -->
@@ -131,6 +148,7 @@ import SectionHeader from '@/components/shared/SectionHeader.vue'
 import MetricCard    from '@/components/shared/MetricCard.vue'
 import ChartCard     from '@/components/shared/ChartCard.vue'
 import DataTable     from '@/components/shared/DataTable.vue'
+import TickerBadge   from '@/components/shared/TickerBadge.vue'
 import { statsApi }  from '@/api/statsApi'
 import { dataApi }   from '@/api/dataApi'
 import { http }          from '@/api/client'
@@ -212,17 +230,25 @@ const gainers = ref<Record<string, unknown>[]>([])
 const losers  = ref<Record<string, unknown>[]>([])
 
 const moverCols = [
-  { key: 'ticker', label: 'Ticker', sortable: false },
-  { key: 'cagr',   label: 'CAGR',   align: 'right' as const, colorize: true,
+  {
+    key: 'ticker', label: 'Ticker', sortable: false,
+    // render as RouterLink — handled via slot in DataTable
+  },
+  { key: 'cagr',  label: 'CAGR',  align: 'right' as const, colorize: true,
     format: (v: unknown) => `${((v as number) * 100).toFixed(1)}%` },
-  { key: 'total',  label: 'Total',  align: 'right' as const, colorize: true,
+  { key: 'total', label: 'Total', align: 'right' as const, colorize: true,
     format: (v: unknown) => `${((v as number) * 100).toFixed(0)}%` },
 ]
 
 async function loadMovers() {
   moversLoading.value = true
   try {
-    const tickers = marketStore.currentTickers.slice(0, 30)
+    // Use all available tickers on disk, not just universe subset
+    await marketStore.loadAvailable()
+    const tickers = marketStore.availableTickers
+      .map((t) => t.ticker)
+      .filter((t) => !['SPY','QQQ','IWM','GLD','TLT','VTI','XLK','XLV','XLF','XLE','XLY','XLP','XLI','XLB','XLU','XLRE','XLC'].includes(t))
+      .slice(0, 60)
     if (!tickers.length) return
     const results = await Promise.allSettled(
       tickers.map((t) => statsApi.returns(t))
@@ -393,6 +419,7 @@ function loadAll() {
 
 onMounted(() => {
   marketStore.loadUniverse('sp100')
+  marketStore.loadAvailable()           // load all 105 downloaded tickers
   checkDataAvailable().then(() => {
     if (!noData.value) loadAll()
   })

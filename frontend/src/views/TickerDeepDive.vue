@@ -23,6 +23,27 @@
       </div>
     </div>
 
+    <!-- Quick ticker browser — all downloaded tickers -->
+    <div class="glass p-3">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-surface-400 uppercase tracking-wider">
+          Available Tickers ({{ availableTickers.length }})
+        </span>
+        <input v-model="tickerFilter" placeholder="Filter…"
+          class="bg-surface-800 border border-surface-700 text-xs text-surface-200 rounded px-2 py-1 w-28 outline-none focus:border-primary-500" />
+      </div>
+      <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto scrollbar-thin">
+        <RouterLink
+          v-for="t in filteredAvailable" :key="t"
+          :to="`/ticker/${t}`"
+          class="px-2 py-0.5 rounded text-xs font-mono font-semibold transition-all duration-100"
+          :class="t === symbol
+            ? 'bg-primary-600 text-white'
+            : 'bg-surface-700/60 text-surface-300 hover:bg-primary-600/20 hover:text-primary-300'"
+        >{{ t }}</RouterLink>
+      </div>
+    </div>
+
     <!-- Candlestick + Indicators -->
     <ChartCard title="Price Chart" :loading="priceLoading" :error="priceError" :height="380" @refresh="loadPrice">
       <template #toolbar>
@@ -127,20 +148,35 @@ import DateRangePicker from '@/components/shared/DateRangePicker.vue'
 import { dataApi }       from '@/api/dataApi'
 import { statsApi }      from '@/api/statsApi'
 import { indicatorsApi } from '@/api/indicatorsApi'
+import { useMarketStore } from '@/stores/marketStore'
 import type { DescriptiveStats, RiskMetrics, ReturnSummary, DateRange } from '@/types'
 import {
   CHART_COLORS, BASE_TOOLTIP, BASE_LEGEND, BASE_GRID,
   BASE_XAXIS, BASE_YAXIS, BASE_DATAZONE,
 } from '@/components/charts/chartTheme'
 
-const route  = useRoute()
-const router = useRouter()
+const route        = useRoute()
+const router       = useRouter()
+const marketStore  = useMarketStore()
 
-const symbol = computed(() => String(route.params.symbol ?? 'AAPL').toUpperCase())
+const symbol = computed(() => String(route.params.symbol ?? 'SPY').toUpperCase())
 
 const dateRange = ref<DateRange>({
   start: dayjs().subtract(5, 'year').format('YYYY-MM-DD'),
   end:   dayjs().format('YYYY-MM-DD'),
+})
+
+// ── Available tickers browser ─────────────────────────────────────────────────
+const tickerFilter = ref('')
+const availableTickers = computed(() =>
+  marketStore.availableTickers
+    .map((t) => t.ticker)
+    .filter((t) => !['XLK','XLV','XLF','XLE','XLY','XLP','XLI','XLB','XLU','XLRE','XLC'].includes(t))
+    .sort()
+)
+const filteredAvailable = computed(() => {
+  const q = tickerFilter.value.toUpperCase().trim()
+  return q ? availableTickers.value.filter((t) => t.includes(q)) : availableTickers.value
 })
 
 function onTickerChange(v: string[]) {
@@ -497,5 +533,8 @@ function loadAll() {
 
 watch(() => symbol.value, loadAll)
 watch(() => dateRange.value, loadAll, { deep: true })
-onMounted(loadAll)
+onMounted(() => {
+  if (!marketStore.availableTickers.length) marketStore.loadAvailable()
+  loadAll()
+})
 </script>
