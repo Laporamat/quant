@@ -50,22 +50,53 @@
       </RouterLink>
     </nav>
 
-    <!-- Bottom hint -->
-    <Transition name="fade-text">
-      <div v-if="appStore.sidebarOpen" class="px-4 py-3 border-t border-surface-700/50 shrink-0">
-        <p class="text-xs text-surface-500">20yr Historical Data</p>
-        <p class="text-xs text-surface-600">SP100 · SET50 · ETFs</p>
-      </div>
-    </Transition>
+    <!-- Bottom: user widget -->
+    <div class="border-t border-surface-700/50 shrink-0">
+      <template v-if="authStore.isLoggedIn">
+        <RouterLink to="/profile"
+          class="flex items-center gap-2.5 px-3 py-3 mx-1.5 mb-1 rounded-lg hover:bg-surface-700/40 transition-colors group">
+          <div class="w-7 h-7 rounded-lg bg-primary-600/30 flex items-center justify-center shrink-0 text-xs font-bold text-primary-300">
+            {{ authStore.displayName[0]?.toUpperCase() }}
+          </div>
+          <Transition name="fade-text">
+            <div v-if="appStore.sidebarOpen" class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-surface-200 truncate">{{ authStore.displayName }}</p>
+              <p class="text-xs text-surface-500 truncate">{{ authStore.user?.role }}</p>
+            </div>
+          </Transition>
+        </RouterLink>
+      </template>
+      <template v-else>
+        <RouterLink to="/login"
+          class="flex items-center gap-2.5 px-3 py-3 mx-1.5 mb-1 rounded-lg hover:bg-primary-600/20 transition-colors">
+          <svg class="w-5 h-5 text-primary-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+          </svg>
+          <Transition name="fade-text">
+            <span v-if="appStore.sidebarOpen" class="text-sm font-medium text-primary-400">เข้าสู่ระบบ</span>
+          </Transition>
+        </RouterLink>
+      </template>
+
+      <!-- Data hint (collapsed only when logged in) -->
+      <Transition name="fade-text">
+        <div v-if="appStore.sidebarOpen && authStore.isLoggedIn" class="px-4 pb-3 -mt-1">
+          <p class="text-xs text-surface-500">20yr Historical Data</p>
+          <p class="text-xs text-surface-600">SP100 · SET50 · ETFs</p>
+        </div>
+      </Transition>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/appStore'
+import { useAuthStore } from '@/stores/authStore'
 
-const route    = useRoute()
-const appStore = useAppStore()
+const route     = useRoute()
+const appStore  = useAppStore()
+const authStore = useAuthStore()
 
 function isActive(path: string) {
   if (path === '/dashboard') return route.path === '/dashboard'
@@ -87,6 +118,11 @@ const navItems = [
   {
     to: '/trade',
     label: '🎯 Edge Trading',
+    iconPath: 'M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6',
+  },
+  {
+    to: '/daytrade',
+    label: '📊 Day Trade',
     iconPath: 'M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6',
   },
   {

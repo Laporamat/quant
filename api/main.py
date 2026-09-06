@@ -22,6 +22,7 @@ from api.routers.optimize_router import router as optimize_router
 from api.routers.daytrade_router import router as daytrade_router
 from api.routers.trade_signal_router import router as trade_signal_router
 from api.routers.ai_router import router as ai_router
+from api.routers.auth_router import router as auth_router
 
 logger = logging.getLogger("api")
 
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(daytrade_router)
     app.include_router(trade_signal_router)
     app.include_router(ai_router)
+    app.include_router(auth_router)
 
     # ── Health / root ─────────────────────────
     @app.get("/", tags=["health"])
