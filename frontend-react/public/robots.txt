@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Public pages (no auth required — fine to index)
+Allow: /login
+Allow: /register
+Allow: /about
+Allow: /faq
+Allow: /privacy
+Allow: /terms
+Allow: /thank-you
+Allow: /case-studies
+
+# App pages (require login — let bots see meta but not content)
+Disallow: /dashboard
+Disallow: /ticker/
+Disallow: /backtest
+Disallow: /optimizer
+Disallow: /profile
+Disallow: /api/
+
+Sitemap: https://quantdash.app/sitemap.xml
