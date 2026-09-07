@@ -24,15 +24,23 @@ _PUBLIC_PREFIXES = [
 def register_middleware(app: FastAPI) -> None:
     """Attach all middleware to the FastAPI app."""
 
-    # ── CORS — tightened for production ───────────────────────────────────────
+    # ── CORS ──────────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:8080",
-                       "http://127.0.0.1:5173"],  # explicit, not wildcard *
+        allow_origins=[
+            "http://localhost:5173",   # Vite Vue dev
+            "http://localhost:5174",   # Vite React dev (alt port)
+            "http://localhost:3000",   # React CRA / Next
+            "http://localhost:3001",
+            "http://localhost:8080",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:3000",
+        ],
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["Authorization", "Content-Type", "X-CSRF-Token",
-                       "X-Requested-With", "Accept"],
+                       "X-Requested-With", "Accept", "Origin"],
         expose_headers=["X-Process-Time", "X-Request-ID"],
     )
 
